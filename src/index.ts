@@ -7,16 +7,7 @@ import { post, PostOptions } from "./post";
 import { put, PutOptions } from "./put";
 import { del } from "./del";
 
-/**
- * A factory hook that provides a set of API hooks with a shared base API URL.
- * @param baseApiUrl The base URL for all API requests (e.g., "http://localhost:5000").
- * @returns An object containing useGet, usePost, usePut, and useDelete hooks, and httpClient.
- * @example
- * const { useGet, usePost, usePut, useDelete } = useApi("http://localhost:5000");
- * const { data } = useGet<User>("/api/user");
- * const { postData } = usePost<{ name: string }, { id: string }>("/api/create");
- */
-export type UseApiOptions = {
+export type CreateFetchHooksOptions = {
   headers?: Record<string, string>;
   onResponseGot?: (
     url: string,
@@ -26,7 +17,7 @@ export type UseApiOptions = {
 };
 export function createFetchHooks(
   baseApiUrl: string,
-  baseOptions?: UseApiOptions
+  baseOptions?: CreateFetchHooksOptions
 ) {
   return {
     useGet: <T>(url: string, options?: UseGetOptions<T>) =>
@@ -83,10 +74,10 @@ export function createFetchHooks(
         dataToPut: PutDataType,
         options?: PutOptions<ResponseType>
       ) => put<PutDataType, ResponseType>(baseApiUrl, url, dataToPut, options),
-      del: <ResponseType>(
-        url: string,
-        options?: PutOptions<ResponseType>
-      ) => del<ResponseType>(baseApiUrl, url, options),
+      del: <ResponseType>(url: string, options?: PutOptions<ResponseType>) =>
+        del<ResponseType>(baseApiUrl, url, options),
     },
   };
 }
+
+export { get, post, put, del, useGet, usePost, usePut, useDelete };
