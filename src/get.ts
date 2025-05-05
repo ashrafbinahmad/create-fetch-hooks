@@ -11,6 +11,7 @@ export type GetOptions<ResponseType> = {
   ) => void;
   dontRequestIfUrlIncludeNullOrUndefined?: boolean;
   headers?: Record<string, string>;
+  signal?: AbortSignal | null | undefined
 };
 export async function get<ResponseType>(
   baseApiUrl: string,
@@ -23,6 +24,7 @@ export async function get<ResponseType>(
     const response = await fetch(cleanedUrl, {
       method: "GET",
       headers: options?.headers,
+      signal: options?.signal
     });
     response.status;
     if (!response.ok) {

@@ -68,6 +68,7 @@ export function useGet<T>(
         dontRequestIfUrlIncludeNullOrUndefined:
           options?.dontRequestIfUrlIncludeNullOrUndefined,
         headers: options?.headers,
+        signal: controller.signal,
         onSuccess(res) {
           setData(res);
           setError(undefined);

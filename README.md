@@ -50,7 +50,7 @@ import { createFetchHooks } from "create-fetch-hooks";
 
 ```ts
 const { useGet, usePost, usePut, useDelete, httpClient } = createFetchHooks(
-  "http://localhost:3000"
+  "http://api.example"
 );
 ```
 

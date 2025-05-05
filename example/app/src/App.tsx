@@ -7,7 +7,7 @@ const { useGet, usePost, usePut, useDelete } = createFetchHooks(
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     onResponseGot(url, endpoint, responseCode) {
       console.log(url, endpoint, responseCode);
-      localStorage.removeItem("token")
+      localStorage.removeItem("token");
     },
   }
 );
@@ -19,23 +19,25 @@ type ProductUpdationResponse = { message: string };
 function App() {
   const [searchText, setSearchText] = useState("");
   const [debounceTime, setDebounceTime] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page] = useState(1);
 
   useEffect(() => {
     setDebounceTime(0);
   }, [page]);
 
   // GET: Fetch products
-  const { reload: reloadProducts } = useGet<Product>(
-    `/products?query=${searchText}`,
-    {
-      debounce: debounceTime,
-      onSuccess(data) {
-        console.log("Products:", data);
-      },
-      dontRequestIfUrlIncludeNullOrUndefined: true,
-    }
-  );
+  const {
+    reload: reloadProducts,
+    data: productsData,
+    error: productsError,
+    loading,
+  } = useGet<Product>(`/products?query=${searchText}`, {
+    debounce: debounceTime,
+    onSuccess(data) {
+      console.log("Products:", data);
+    },
+    dontRequestIfUrlIncludeNullOrUndefined: true,
+  });
 
   // POST: Create product
   const {
@@ -68,13 +70,14 @@ function App() {
     loading: deleting,
   } = useDelete("/products", {
     onSuccess(res) {
-      console.log("Deleted");
+      console.log("Deleted", res);
     },
   });
 
   return (
     <div>
       <input
+        aria-label="test"
         type="text"
         value={searchText}
         onChange={(e) => {
@@ -82,6 +85,8 @@ function App() {
           setSearchText(e.target.value);
         }}
       />
+      <p>{productsData?.name}</p>
+
       <button onClick={() => reloadProducts()}>Reload Products</button>
       <button onClick={() => postData({ name: "New Product", price: 100 })}>
         Create Product
@@ -90,6 +95,12 @@ function App() {
         Update Product
       </button>
       <button onClick={() => deleteData(5)}>Delete Product</button>
+
+      <p>{loading || creating || updating || deleting ? "Loading" : ""}</p>
+      <p>{productsError?.message}</p>
+      <p>{createError?.message}</p>
+      <p>{updateError?.message}</p>
+      <p>{deleteError?.message}</p>
     </div>
   );
 }
