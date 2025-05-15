@@ -80,4 +80,3 @@ export function createFetchHooks(
   };
 }
 
-export { get, post, put, del, useGet, usePost, usePut, useDelete };

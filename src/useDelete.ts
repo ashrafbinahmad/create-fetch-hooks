@@ -19,7 +19,7 @@ export function useDelete<ResponseType>(
   url: string,
   options?: UseDeleteOptions<ResponseType>
 ) {
-  const [error, setError] = useState<FetchError | null>(null);
+  const [error, setError] = useState<FetchError>();
   const [loading, setLoading] = useState(false);
 
   const cleanUrl = removeMultipleSlashes(`${baseApiUrl}/${url}`);

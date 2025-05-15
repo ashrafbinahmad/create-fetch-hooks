@@ -20,12 +20,11 @@ export function usePost<PostDataType, ResponseType>(
   url: string,
   options?: UsePostOptions<ResponseType>
 ) {
-  const [error, setError] = useState<FetchError | null>(null);
+  const [error, setError] = useState<FetchError>();
   const [loading, setLoading] = useState(false);
 
   async function postData(dataToPost: PostDataType, id?: number | string) {
     setLoading(true);
-
     post<PostDataType, ResponseType>(baseApiUrl, `${url}/${id || ""}`, dataToPost, {
       convertToFormData: options?.convertToFormData,
       headers: options?.headers,

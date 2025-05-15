@@ -21,7 +21,7 @@ export function usePut<PutDataType, ResponseType>(
   url: string,
   options?: UsePutOptions<ResponseType>
 ) {
-  const [error, setError] = useState<FetchError | null>(null);
+  const [error, setError] = useState<FetchError>();
   const [loading, setLoading] = useState(false);
 
   
