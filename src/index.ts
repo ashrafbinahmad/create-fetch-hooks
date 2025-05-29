@@ -6,10 +6,20 @@ import { get, GetOptions } from "./get";
 import { post, PostOptions } from "./post";
 import { put, PutOptions } from "./put";
 import { del } from "./del";
+import { FetchCacheProvider } from "./FetchCacheProvider";
+import { mergeHeaders } from "./utils/mergeHeader";
 
 export type CreateFetchHooksOptions = {
-  headers?: Record<string, string>;
-  onResponseGot?: (
+  staticHeaders?: Record<string, string>;
+  accessTokenLocalStorageKey?: string;
+  callRefreshToken?: () => {
+    on: number[]; // response codes to trigger refresh
+    body: Record<string, string>; // user-defined refresh body
+    endpoint: string; // endpoint to call for refresh
+    saveAccessTokenFromResponse?: (res?: any) => void; // how to extract new token
+  };
+  setHeaders?: () => Record<string, string>;
+  onResponse?: (
     url: string,
     endpoint: string,
     responseCode: number | string | undefined
@@ -20,63 +30,157 @@ export function createFetchHooks(
   baseOptions?: CreateFetchHooksOptions
 ) {
   return {
-    useGet: <T>(url: string, options?: UseGetOptions<T>) =>
-      useGet<T>(baseApiUrl, url, {
+    FetchCacheProvider,
+    useGet: <T>(url: string, options?: UseGetOptions<T>) => {
+      const dynamicHeaders = baseOptions?.setHeaders?.();
+      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        ...dynamicHeaders,
+        Authorization: `Bearer ${localStorage.getItem(
+          baseOptions?.accessTokenLocalStorageKey || ""
+        )}`,
+      });
+      return useGet<T>(baseApiUrl, url, {
         ...options,
-        headers: baseOptions?.headers,
+        headers,
         onResponseGot(url, endpoint, responseCode) {
-          baseOptions?.onResponseGot?.(url, endpoint, responseCode);
+          baseOptions?.onResponse?.(url, endpoint, responseCode);
         },
-      }),
+        accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+        callRefreshToken: baseOptions?.callRefreshToken,
+      });
+    },
     usePost: <PostDataType, ResponseType>(
       url: string,
       options?: UsePostOptions<ResponseType>
-    ) =>
-      usePost<PostDataType, ResponseType>(baseApiUrl, url, {
+    ) => {
+      const dynamicHeaders = baseOptions?.setHeaders?.();
+      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        ...dynamicHeaders,
+        Authorization: `Bearer ${localStorage.getItem(
+          baseOptions?.accessTokenLocalStorageKey || ""
+        )}`,
+      });
+      return usePost<PostDataType, ResponseType>(baseApiUrl, url, {
         ...options,
-        headers: baseOptions?.headers,
+        headers,
         onResponseGot(url, endpoint, responseCode) {
-          baseOptions?.onResponseGot?.(url, endpoint, responseCode);
+          baseOptions?.onResponse?.(url, endpoint, responseCode);
         },
-      }),
+        accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+        callRefreshToken: baseOptions?.callRefreshToken,
+      });
+    },
     usePut: <PutDataType, ResponseType>(
       url: string,
       options?: UsePutOptions<ResponseType>
-    ) =>
-      usePut<PutDataType, ResponseType>(baseApiUrl, url, {
+    ) => {
+      const dynamicHeaders = baseOptions?.setHeaders?.();
+      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        ...dynamicHeaders,
+        Authorization: `Bearer ${localStorage.getItem(
+          baseOptions?.accessTokenLocalStorageKey || ""
+        )}`,
+      });
+      return usePut<PutDataType, ResponseType>(baseApiUrl, url, {
         ...options,
-        headers: baseOptions?.headers,
+        headers,
         onResponseGot(url, endpoint, responseCode) {
-          baseOptions?.onResponseGot?.(url, endpoint, responseCode);
+          baseOptions?.onResponse?.(url, endpoint, responseCode);
         },
-      }),
+        accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+        callRefreshToken: baseOptions?.callRefreshToken,
+      });
+    },
     useDelete: <ResponseType>(
       url: string,
       options?: UseDeleteOptions<ResponseType>
-    ) =>
-      useDelete<ResponseType>(baseApiUrl, url, {
+    ) => {
+      const dynamicHeaders = baseOptions?.setHeaders?.();
+      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        ...dynamicHeaders,
+        Authorization: `Bearer ${localStorage.getItem(
+          baseOptions?.accessTokenLocalStorageKey || ""
+        )}`,
+      });
+      return useDelete<ResponseType>(baseApiUrl, url, {
         ...options,
-        headers: baseOptions?.headers,
+        headers,
         onResponseGot(url, endpoint, responseCode) {
-          baseOptions?.onResponseGot?.(url, endpoint, responseCode);
+          baseOptions?.onResponse?.(url, endpoint, responseCode);
         },
-      }),
+        accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+        callRefreshToken: baseOptions?.callRefreshToken,
+      });
+    },
     httpClient: {
-      get: <ResponseType>(url: string, options?: GetOptions<ResponseType>) =>
-        get<ResponseType>(baseApiUrl, url, options),
+      get: <ResponseType>(url: string, options?: GetOptions<ResponseType>) => {
+        const dynamicHeaders = baseOptions?.setHeaders?.();
+        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+          ...dynamicHeaders,
+          Authorization: `Bearer ${localStorage.getItem(
+            baseOptions?.accessTokenLocalStorageKey || ""
+          )}`,
+        });
+        return get<ResponseType>(baseApiUrl, url, {
+          ...options,
+          headers,
+          accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+          callRefreshToken: baseOptions?.callRefreshToken,
+        });
+      },
       post: <PostDataType, ResponseType>(
         url: string,
         postData: PostDataType,
         options?: PostOptions<ResponseType>
-      ) => post<PostDataType, ResponseType>(baseApiUrl, url, postData, options),
+      ) => {
+        const dynamicHeaders = baseOptions?.setHeaders?.();
+        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+          ...dynamicHeaders,
+          Authorization: `Bearer ${localStorage.getItem(
+            baseOptions?.accessTokenLocalStorageKey || ""
+          )}`,
+        });
+        return post<PostDataType, ResponseType>(baseApiUrl, url, postData, {
+          ...options,
+          headers,
+          accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+          callRefreshToken: baseOptions?.callRefreshToken,
+        });
+      },
       put: <PutDataType, ResponseType>(
         url: string,
         dataToPut: PutDataType,
         options?: PutOptions<ResponseType>
-      ) => put<PutDataType, ResponseType>(baseApiUrl, url, dataToPut, options),
-      del: <ResponseType>(url: string, options?: PutOptions<ResponseType>) =>
-        del<ResponseType>(baseApiUrl, url, options),
+      ) => {
+        const dynamicHeaders = baseOptions?.setHeaders?.();
+        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+          ...dynamicHeaders,
+          Authorization: `Bearer ${localStorage.getItem(
+            baseOptions?.accessTokenLocalStorageKey || ""
+          )}`,
+        });
+        return put<PutDataType, ResponseType>(baseApiUrl, url, dataToPut, {
+          ...options,
+          headers,
+          accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+          callRefreshToken: baseOptions?.callRefreshToken,
+        });
+      },
+      del: <ResponseType>(url: string, options?: PutOptions<ResponseType>) => {
+        const dynamicHeaders = baseOptions?.setHeaders?.();
+        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+          ...dynamicHeaders,
+          Authorization: `Bearer ${localStorage.getItem(
+            baseOptions?.accessTokenLocalStorageKey || ""
+          )}`,
+        });
+        return del<ResponseType>(baseApiUrl, url, {
+          ...options,
+          headers,
+          accessTokenLocalStorageKey: baseOptions?.accessTokenLocalStorageKey,
+          callRefreshToken: baseOptions?.callRefreshToken,
+        });
+      },
     },
   };
 }
-

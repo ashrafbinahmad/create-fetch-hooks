@@ -1,8 +1,10 @@
 import { FetchError } from "./types/FetchError";
 import { removeMultipleSlashes } from "./utils/removeMultipleSlashes";
+import { refreshToken } from "./refreshToken";
+import { mergeHeaders } from "./utils/mergeHeader";
 
-export type UseDeleteOptions<Response> = {
-  onSuccess?: (res: Response) => void;
+export type UseDeleteOptions<ResponseType> = {
+  onSuccess?: (res: ResponseType) => void;
   onError?: (error: FetchError) => void;
   onResponseGot?: (
     url: string,
@@ -10,6 +12,16 @@ export type UseDeleteOptions<Response> = {
     responseCode: number | string | undefined
   ) => void;
   headers?: Record<string, string>;
+  signal?: AbortSignal | null | undefined;
+  accessTokenLocalStorageKey?: string;
+  callRefreshToken?: () => {
+    on: number[]; // response codes to trigger refresh
+    body: Record<string, string>; // user-defined refresh body
+    endpoint: string; // endpoint to call for refresh
+    saveAccessTokenFromResponse?: (res: any) => void; // how to extract new token
+  };
+  retryCount?: number; // Number of retry attempts for 403 errors
+  retryDelay?: number; // Delay between retries in milliseconds
 };
 
 export async function del<ResponseType>(
@@ -17,44 +29,71 @@ export async function del<ResponseType>(
   url: string,
   options?: UseDeleteOptions<ResponseType>
 ) {
-  const cleanUrl = removeMultipleSlashes(`${baseApiUrl}/${url}`);
-
-  const cleanedUrl = removeMultipleSlashes(`${cleanUrl}`);
+  const cleanedUrl = removeMultipleSlashes(`${baseApiUrl}/${url}`);
+  const maxRetries = options?.retryCount ?? (options?.callRefreshToken ? 1 : 0);
+  const retryDelay = options?.retryDelay ?? 0;
   let responseCode: number | string | undefined;
-  try {
-    const response = await fetch(cleanedUrl, {
-      method: "DELETE",
-      headers: {
-        ...(options?.headers || {}),
-      },
-    });
-    responseCode = response.status;
 
-    if (!response.ok) {
-      throw new FetchError(
-        `HTTP error! Status: ${response.status}`,
-        response,
-        response.status
-      );
-    }
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(cleanedUrl, {
+        method: "DELETE",
+        headers: mergeHeaders(options?.headers, {
+          Authorization: `Bearer ${localStorage.getItem(
+            options?.accessTokenLocalStorageKey || ""
+          )}`,
+        }),
+        signal: options?.signal,
+      });
+      responseCode = response.status;
 
-    const res = await response.json();
-    options?.onSuccess?.(res);
-    return res;
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name !== "AbortError") {
-      const fetchErr =
-        err instanceof FetchError ? err : new FetchError(err.message);
-      options?.onError?.(fetchErr);
-      if (fetchErr.status !== undefined) {
-        responseCode = fetchErr.status || undefined;
+      if (!response.ok) {
+        const error = new FetchError(
+          `HTTP error! Status: ${response.status}`,
+          response,
+          response.status
+        );
+
+        const refreshTokenConfig = options?.callRefreshToken?.();
+        if (
+          refreshTokenConfig?.on.includes(response.status) &&
+          attempt < maxRetries
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          await refreshToken(
+            baseApiUrl,
+            refreshTokenConfig.endpoint,
+            refreshTokenConfig.body,
+            refreshTokenConfig.saveAccessTokenFromResponse
+          );
+          continue; // Retry the request
+        }
+
+        throw error;
+      }
+
+      const res = await response.json();
+      options?.onSuccess?.(res);
+      return res;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        const fetchErr =
+          err instanceof FetchError ? err : new FetchError(err.message);
+        if (attempt === maxRetries) {
+          options?.onError?.(fetchErr);
+          if (fetchErr.status !== undefined) {
+            responseCode = fetchErr.status || undefined;
+          }
+        }
+      }
+    } finally {
+      if (attempt === maxRetries) {
+        options?.onResponseGot?.(
+          cleanedUrl,
+          removeMultipleSlashes(cleanedUrl.replace(baseApiUrl, "/")).split("?")[0],
+          responseCode
+        );
       }
     }
-  } finally {
-    options?.onResponseGot?.(
-      cleanUrl,
-      removeMultipleSlashes(cleanUrl.replace(baseApiUrl, "/")).split("?")[0],
-      responseCode
-    );
   }
 }

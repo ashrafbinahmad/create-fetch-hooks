@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { removeMultipleSlashes } from "./utils/removeMultipleSlashes";
 import { FetchError } from "./types/FetchError";
 import { get } from "./get";
+import { useFetchCache } from "./FetchCacheProvider";
 
 export type UseGetOptions<ResponseType> = {
   onSuccess?: (data: ResponseType) => void;
@@ -11,28 +12,18 @@ export type UseGetOptions<ResponseType> = {
     endpoint: string,
     responseCode: number | string | undefined
   ) => void;
-  debounce?: number; // debounce delay in milliseconds
+  debounce?: number;
   dontRequestIfUrlIncludeNullOrUndefined?: boolean;
   headers?: Record<string, string>;
+  accessTokenLocalStorageKey?: string;
+  callRefreshToken?: () => {
+    on: number[]; // response codes to trigger refresh
+    body: Record<string, string>; // user-defined refresh body
+    endpoint: string; // endpoint to call for refresh
+    saveAccessTokenFromResponse?: (res: any) => void; // how to extract new token
+  };
 };
-/**
- * A custom React hook for making GET requests using the Fetch API.
- * @template Response The type of the response data.
- * @param url The API endpoint URL (relative or absolute). The request will resend when the url change. use debounce in options to make a delay
- * @param options Optional configuration for the GET request.
- * @param options.onDataGet Callback invoked with the response data on success.
- * @param options.onErrorResponse Callback invoked with a FetchError on failure.
- * @param options.debounce Delay in milliseconds before sending the request..
- * @param options.dontRequestIfUrlIncludeNullOrUndefined If true, skips requests if the URL contains "undefined" or "null".
- * @param options.headers Custom headers for the request.
- * @param options.baseApiUrl Base URL to prepend to the endpoint.
- * @returns An object containing the response data, error, loading state, and a reload function.
- * @example
- * const { data, error, loading, reload } = useGet<User>("/api/user", {
- *   baseApiUrl: "http://localhost:5000",
- *   onDataGet: (data) => console.log(data),
- * });
- */
+
 export function useGet<T>(
   baseApiUrl: string,
   url: string,
@@ -42,6 +33,8 @@ export function useGet<T>(
   const [error, setError] = useState<FetchError | undefined>();
   const [loading, setLoading] = useState(true);
   const [trigger, setTrigger] = useState(0);
+
+  const cache = useFetchCache(); // ✅ get cache context
 
   const reload = useCallback(() => {
     setTrigger((prev) => prev + 1);
@@ -63,27 +56,39 @@ export function useGet<T>(
 
     const timeout = setTimeout(() => {
       const fetchData = async () => {
+        if (cache?.has(cleanUrl)) {
+          const cached = cache.get(cleanUrl);
+          setData(cached);
+          // setLoading(false);
+          // options?.onSuccess?.(cached);
+          // return;
+        }
+
         setLoading(true);
+
         get<T>(baseApiUrl, url, {
-        dontRequestIfUrlIncludeNullOrUndefined:
-          options?.dontRequestIfUrlIncludeNullOrUndefined,
-        headers: options?.headers,
-        signal: controller.signal,
-        onSuccess(res) {
-          setData(res);
-          setError(undefined);
-          options?.onSuccess?.(res);
-        },
-        onError(error) {
-          setError(error);
-          setData(undefined);
-          options?.onError?.(error);
-        },
-        onResponseGot(url, endpoint, responseCode) {
-          setLoading(false)
-          options?.onResponseGot?.(url, endpoint, responseCode);
-        },
-      });
+          dontRequestIfUrlIncludeNullOrUndefined:
+            options?.dontRequestIfUrlIncludeNullOrUndefined,
+          headers: options?.headers,
+          signal: controller.signal,
+          onSuccess(res) {
+            setData(res);
+            setError(undefined);
+            options?.onSuccess?.(res);
+            cache?.set(cleanUrl, res);
+          },
+          onError(err) {
+            setError(err);
+            setData(undefined);
+            options?.onError?.(err);
+          },
+          onResponseGot(url, endpoint, responseCode) {
+            setLoading(false);
+            options?.onResponseGot?.(url, endpoint, responseCode);
+          },
+          accessTokenLocalStorageKey: options?.accessTokenLocalStorageKey,
+          callRefreshToken: options?.callRefreshToken,
+        });
       };
 
       fetchData();
@@ -93,7 +98,7 @@ export function useGet<T>(
       controller.abort();
       clearTimeout(timeout);
     };
-  }, [cleanUrl, trigger, options?.debounce, options?.headers]);
+  }, [cleanUrl, trigger, options?.debounce]);
 
   return { data, error, loading, reload };
 }
