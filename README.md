@@ -1,32 +1,82 @@
 # 🎞 createFetchHooks – Your Custom API Hook Factory
 
-A TypeScript-based utility to generate `React` hooks and HTTP methods (`GET`, `POST`, `PUT`, `DELETE`) with unified error handling, headers support, response tracking, and enhanced developer experience.
+A TypeScript-based utility to generate `React` hooks and HTTP methods (`GET`, `POST`, `PUT`, `DELETE`) with unified error handling, headers support, response tracking, token refresh, and enhanced developer experience.
 
 ---
 
 ## ✨ What is this?
 
-This utility gives you both:
+This utility provides:
 
-✅ React Hooks like `useGet`, `usePost`
-✅ Direct HTTP methods like `httpClient.get`, `httpClient.post`
+✅ React Hooks: `useGet`, `usePost`, `usePut`, `useDelete`  
+✅ Direct HTTP methods: `httpClient.get`, `httpClient.post`, `httpClient.put`, `httpClient.del`  
+✅ Cache management with `FetchCacheProvider`  
+✅ Automatic token refresh with customizable logic  
 
-It simplifies working with REST APIs in a type-safe and scalable way.
+It simplifies working with REST APIs in a type-safe, scalable way with built-in support for authentication and caching.
+
+---
+
+## 🚀 Quick Setup
+
+Initialize the hooks and HTTP client with a base URL and optional configuration, including token refresh logic:
+
+```ts
+export const {
+  useGet,
+  useDelete,
+  usePost,
+  usePut,
+  httpClient,
+  FetchCacheProvider,
+} = createFetchHooks(
+  "http://localhost:3000/", // API base url
+  {
+    accessTokenLocalStorageKey: "accessToken",
+    callRefreshToken() {
+      return {
+        on: [403], // The response code to be tracked to refresh token
+        body: { refreshToken: localStorage.getItem("refreshToken") || "" }, // refresh token body
+        endpoint: "/refresh", // The refresh token end point
+        saveAccessTokenFromResponse: async function (res) {
+          localStorage.setItem("accessToken", res?.accessToken); 
+        },
+      };
+    },
+  }
+);
+```
+
+Wrap your app with `FetchCacheProvider` to enable caching:
+
+```tsx
+import { FetchCacheProvider } from "create-fetch-hooks";
+
+function App() {
+  return (
+    <FetchCacheProvider>
+      <YourApp />
+    </FetchCacheProvider>
+  );
+}
+```
 
 ---
 
 ## 💡 Why use this over other libraries?
 
 | Feature                             | create-fetch-hooks | Axios | React Query |
-| ----------------------------------- | ------------------ | ----- | ----------- |
+|-------------------------------------|--------------------|-------|-------------|
 | Fully typed with generics           | ✅                 | ⚠️    | ✅          |
 | React-friendly hooks                | ✅                 | ❌    | ✅          |
-| Custom `onResponseGot` tracking     | ✅                 | ❌    | ❌          |
+| Custom `onResponse` tracking        | ✅                 | ❌    | ❌          |
 | Optional debounce for `useGet`      | ✅                 | ❌    | ⚠️ Plugin   |
 | Unified header injection            | ✅                 | ⚠️    | ⚠️          |
 | Minimalistic, no extra deps         | ✅                 | ❌    | ❌          |
 | Convert to `FormData` in `POST/PUT` | ✅                 | ❌    | ⚠️ Manual   |
 | Works without any context provider  | ✅                 | ❌    | ❌          |
+| Token refresh support               | ✅                 | ⚠️    | ⚠️ Manual   |
+| Cache management with `FetchCacheProvider` | ✅          | ❌    | ✅          |
 
 ---
 
@@ -46,20 +96,11 @@ import { createFetchHooks } from "create-fetch-hooks";
 
 ---
 
-## 🚀 Quick Setup
-
-```ts
-const { useGet, usePost, usePut, useDelete, httpClient } = createFetchHooks(
-  "http://api.example"
-);
-```
-
----
 
 ## 🧙‍♂️ Hook Return Types
 
 | Hook        | Return                             |
-| ----------- | ---------------------------------- |
+|-------------|------------------------------------|
 | `useGet`    | `{ data, error, loading, reload }` |
 | `usePost`   | `{ error, loading, postData }`     |
 | `usePut`    | `{ error, loading, putData }`      |
@@ -74,19 +115,35 @@ const { useGet, usePost, usePut, useDelete, httpClient } = createFetchHooks(
 ```ts
 import { createFetchHooks } from "create-fetch-hooks";
 
-export const { useGet, usePost, usePut, useDelete, httpClient } =
-  createFetchHooks("https://api.example.com", {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-
-    onResponseGot(url, endpoint, responseCode) {
-      if (endpoint === "/me" && responseCode === 400) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      }
-    },
-  });
+export const {
+  useGet,
+  usePost,
+  usePut,
+  useDelete,
+  httpClient,
+  FetchCacheProvider,
+} = createFetchHooks("https://api.example.com", {
+  staticHeaders: {
+    "Content-Type": "application/json",
+  },
+  accessTokenLocalStorageKey: "accessToken",
+  callRefreshToken() {
+    return {
+      on: [403],
+      body: { refreshToken: localStorage.getItem("refreshToken") || "" },
+      endpoint: "/refresh",
+      saveAccessTokenFromResponse: async (res) => {
+        localStorage.setItem("accessToken", res?.accessToken);
+      },
+    };
+  },
+  onResponse(url, endpoint, responseCode) {
+    if (endpoint === "/me" && responseCode === 401) {
+      localStorage.removeItem("accessToken");
+      window.location.href = "/login";
+    }
+  },
+});
 ```
 
 **📁 /pages/UserList.tsx**
@@ -94,11 +151,16 @@ export const { useGet, usePost, usePut, useDelete, httpClient } =
 ```tsx
 import { useGet } from "../hooks/api";
 
+interface User {
+  id: number;
+  name: string;
+}
+
 const UserList = () => {
   const { data: users, loading, error, reload } = useGet<User[]>("/users");
 
   if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error occurred</p>;
+  if (error) return <p>Error occurred: {error.message}</p>;
 
   return (
     <ul>
@@ -113,17 +175,39 @@ const UserList = () => {
 export default UserList;
 ```
 
+**📁 /App.tsx**
+
+```tsx
+import { FetchCacheProvider } from "../hooks/api";
+import UserList from "./pages/UserList";
+
+function App() {
+  return (
+    <FetchCacheProvider>
+      <UserList />
+    </FetchCacheProvider>
+  );
+}
+
+export default App;
+```
+
 ---
 
 ## 📜 Docs
 
-All options and return types are strongly typed with TypeScript. You can explore available options like:
+All options and return types are strongly typed with TypeScript. Key configuration options include:
 
-- `onSuccess`, `onError`, `onResponseGot`
-- `convertToFormData`, `removeIfValueIsNullOrUndefined`
-- `debounce`, `dontRequestIfUrlIncludeNullOrUndefined`
+- `staticHeaders`: Static headers applied to all requests.
+- `setHeaders`: Function to dynamically generate headers for each request.
+- `accessTokenLocalStorageKey`: Key for retrieving access token from localStorage.
+- `callRefreshToken`: Configures token refresh logic, including response codes, endpoint, body, and token storage.
+- `onResponse`: Callback for handling responses globally.
+- `onSuccess`, `onError`, `onResponseGot`: Callbacks for specific hooks.
+- `convertToFormData`, `removeIfValueIsNullOrUndefined`: Options for POST/PUT data handling.
+- `debounce`, `dontRequestIfUrlIncludeNullOrUndefined`: Options for GET requests.
 
-Check the source code and full examples on GitHub 🔻
+Check the source code and full examples on GitHub for detailed usage.
 
 ---
 
