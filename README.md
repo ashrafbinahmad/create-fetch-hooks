@@ -1,6 +1,9 @@
-# 🎞 createFetchHooks – Your Custom API Hook Factory
 
-A TypeScript-based utility to generate `React` hooks and HTTP methods (`GET`, `POST`, `PUT`, `DELETE`) with unified error handling, headers support, response tracking, token refresh, and enhanced developer experience.
+<img src="./images/logo.png" alt="Logo" width="100"/> <br/>
+
+# 🎞 Create Fetch Hooks – Custom API Hook Factory
+
+Easily generate `React` hooks and HTTP methods (`GET`, `POST`, `PUT`, `DELETE`) with unified error handling, headers support, response tracking, token refresh, and enhanced developer experience.
 
 ---
 
@@ -31,6 +34,7 @@ export const {
   FetchCacheProvider,
 } = createFetchHooks(
   "http://localhost:3000/", // API base url
+  //Optional - Required if you want auto refresh tokens:
   {
     accessTokenLocalStorageKey: "accessToken",
     callRefreshToken() {
@@ -50,6 +54,7 @@ export const {
 Wrap your app with `FetchCacheProvider` to enable caching:
 
 ```tsx
+// Optional - Required if you want cache (eg: Need not to wait if already loaded when returning to the page, it will load from cache)
 import { FetchCacheProvider } from "create-fetch-hooks";
 
 function App() {
@@ -74,7 +79,7 @@ function App() {
 | Unified header injection            | ✅                 | ⚠️    | ⚠️          |
 | Minimalistic, no extra deps         | ✅                 | ❌    | ❌          |
 | Convert to `FormData` in `POST/PUT` | ✅                 | ❌    | ⚠️ Manual   |
-| Works without any context provider  | ✅                 | ❌    | ❌          |
+| Works without any context provider - Required if caching needed  | ✅                 | ❌    | ❌          |
 | Token refresh support               | ✅                 | ⚠️    | ⚠️ Manual   |
 | Cache management with `FetchCacheProvider` | ✅          | ❌    | ✅          |
 
@@ -123,9 +128,6 @@ export const {
   httpClient,
   FetchCacheProvider,
 } = createFetchHooks("https://api.example.com", {
-  staticHeaders: {
-    "Content-Type": "application/json",
-  },
   accessTokenLocalStorageKey: "accessToken",
   callRefreshToken() {
     return {
@@ -146,7 +148,7 @@ export const {
 });
 ```
 
-**📁 /pages/UserList.tsx**
+**📁 /components/UserList.tsx**
 
 ```tsx
 import { useGet } from "../hooks/api";
@@ -179,7 +181,7 @@ export default UserList;
 
 ```tsx
 import { FetchCacheProvider } from "../hooks/api";
-import UserList from "./pages/UserList";
+import UserList from "./components/UserList";
 
 function App() {
   return (
@@ -198,7 +200,6 @@ export default App;
 
 All options and return types are strongly typed with TypeScript. Key configuration options include:
 
-- `staticHeaders`: Static headers applied to all requests.
 - `setHeaders`: Function to dynamically generate headers for each request.
 - `accessTokenLocalStorageKey`: Key for retrieving access token from localStorage.
 - `callRefreshToken`: Configures token refresh logic, including response codes, endpoint, body, and token storage.

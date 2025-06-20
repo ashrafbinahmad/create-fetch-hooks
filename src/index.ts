@@ -7,10 +7,8 @@ import { post, PostOptions } from "./post";
 import { put, PutOptions } from "./put";
 import { del } from "./del";
 import { FetchCacheProvider } from "./FetchCacheProvider";
-import { mergeHeaders } from "./utils/mergeHeader";
 
 export type CreateFetchHooksOptions = {
-  staticHeaders?: Record<string, string>;
   accessTokenLocalStorageKey?: string;
   callRefreshToken?: () => {
     on: number[]; // response codes to trigger refresh
@@ -33,12 +31,12 @@ export function createFetchHooks(
     FetchCacheProvider,
     useGet: <T>(url: string, options?: UseGetOptions<T>) => {
       const dynamicHeaders = baseOptions?.setHeaders?.();
-      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+      const headers = {
         ...dynamicHeaders,
         Authorization: `Bearer ${localStorage.getItem(
           baseOptions?.accessTokenLocalStorageKey || ""
         )}`,
-      });
+      };
       return useGet<T>(baseApiUrl, url, {
         ...options,
         headers,
@@ -54,12 +52,12 @@ export function createFetchHooks(
       options?: UsePostOptions<ResponseType>
     ) => {
       const dynamicHeaders = baseOptions?.setHeaders?.();
-      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+      const headers = {
         ...dynamicHeaders,
         Authorization: `Bearer ${localStorage.getItem(
           baseOptions?.accessTokenLocalStorageKey || ""
         )}`,
-      });
+      };
       return usePost<PostDataType, ResponseType>(baseApiUrl, url, {
         ...options,
         headers,
@@ -75,12 +73,12 @@ export function createFetchHooks(
       options?: UsePutOptions<ResponseType>
     ) => {
       const dynamicHeaders = baseOptions?.setHeaders?.();
-      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+      const headers = {
         ...dynamicHeaders,
         Authorization: `Bearer ${localStorage.getItem(
           baseOptions?.accessTokenLocalStorageKey || ""
         )}`,
-      });
+      };
       return usePut<PutDataType, ResponseType>(baseApiUrl, url, {
         ...options,
         headers,
@@ -96,12 +94,12 @@ export function createFetchHooks(
       options?: UseDeleteOptions<ResponseType>
     ) => {
       const dynamicHeaders = baseOptions?.setHeaders?.();
-      const headers = mergeHeaders(baseOptions?.staticHeaders, {
+      const headers = {
         ...dynamicHeaders,
         Authorization: `Bearer ${localStorage.getItem(
           baseOptions?.accessTokenLocalStorageKey || ""
         )}`,
-      });
+      };
       return useDelete<ResponseType>(baseApiUrl, url, {
         ...options,
         headers,
@@ -115,12 +113,12 @@ export function createFetchHooks(
     httpClient: {
       get: <ResponseType>(url: string, options?: GetOptions<ResponseType>) => {
         const dynamicHeaders = baseOptions?.setHeaders?.();
-        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        const headers = {
           ...dynamicHeaders,
           Authorization: `Bearer ${localStorage.getItem(
             baseOptions?.accessTokenLocalStorageKey || ""
           )}`,
-        });
+        };
         return get<ResponseType>(baseApiUrl, url, {
           ...options,
           headers,
@@ -134,12 +132,12 @@ export function createFetchHooks(
         options?: PostOptions<ResponseType>
       ) => {
         const dynamicHeaders = baseOptions?.setHeaders?.();
-        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        const headers = {
           ...dynamicHeaders,
           Authorization: `Bearer ${localStorage.getItem(
             baseOptions?.accessTokenLocalStorageKey || ""
           )}`,
-        });
+        };
         return post<PostDataType, ResponseType>(baseApiUrl, url, postData, {
           ...options,
           headers,
@@ -153,12 +151,12 @@ export function createFetchHooks(
         options?: PutOptions<ResponseType>
       ) => {
         const dynamicHeaders = baseOptions?.setHeaders?.();
-        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        const headers = {
           ...dynamicHeaders,
           Authorization: `Bearer ${localStorage.getItem(
             baseOptions?.accessTokenLocalStorageKey || ""
           )}`,
-        });
+        };
         return put<PutDataType, ResponseType>(baseApiUrl, url, dataToPut, {
           ...options,
           headers,
@@ -168,12 +166,12 @@ export function createFetchHooks(
       },
       del: <ResponseType>(url: string, options?: PutOptions<ResponseType>) => {
         const dynamicHeaders = baseOptions?.setHeaders?.();
-        const headers = mergeHeaders(baseOptions?.staticHeaders, {
+        const headers = {
           ...dynamicHeaders,
           Authorization: `Bearer ${localStorage.getItem(
             baseOptions?.accessTokenLocalStorageKey || ""
           )}`,
-        });
+        };
         return del<ResponseType>(baseApiUrl, url, {
           ...options,
           headers,

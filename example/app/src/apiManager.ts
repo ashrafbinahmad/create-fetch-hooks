@@ -18,7 +18,6 @@ export const {
         endpoint: "/refresh",
         saveAccessTokenFromResponse: async function (res) {
           localStorage.setItem("accessToken", res?.accessToken);
-          
         },
       };
     },

@@ -1,12 +1,13 @@
 {
   "name": "create-fetch-hooks",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "A simple and powerful custom React hook (useApi) that simplifies API requests with automatic loading and error states. Ideal for clean and maintainable data fetching in React components.",
   "main": "dist/index.js",
   "files": [
     "dist",
     "README.md",
-    "license.txt"
+    "license.txt",
+    "images"
   ],
   "scripts": {
     "build": "tsc",
